@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract TreasuryManagement {
+    address public owner;
+    mapping(address => uint256) public balances;
+
+    // Event to log deposits and withdrawals
+    event Transaction(address indexed sender, uint256 amount, string transactionType);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can execute this action");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    // Deposit function to add funds to the treasury
+    function deposit() public payable {
+        balances[owner] += msg.value;
+        emit Transaction(msg.sender, msg.value, "Deposit");
+    }
+
+    // Withdraw function to allow the owner to withdraw funds from the treasury
+    function withdraw(uint256 amount) public onlyOwner {
+        require(amount <= balances[owner], "Insufficient balance");
+        payable(owner).transfer(amount);
+        balances[owner] -= amount;
+        emit Transaction(owner, amount, "Withdraw");
+    }
+
+    // View function to get the current balance of the treasury
+    function getTreasuryBalance() public view returns (uint256) {
+        return balances[owner];
+    }
+}
