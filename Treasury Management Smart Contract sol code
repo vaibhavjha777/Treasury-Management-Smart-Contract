@@ -5,8 +5,8 @@ contract TreasuryManagement {
     address public owner;
     mapping(address => uint256) public balances;
 
-    // Event to log deposits and withdrawals
     event Transaction(address indexed sender, uint256 amount, string transactionType);
+    event OwnershipTransferred(address indexed oldOwner, address indexed newOwner);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can execute this action");
@@ -23,7 +23,13 @@ contract TreasuryManagement {
         emit Transaction(msg.sender, msg.value, "Deposit");
     }
 
-    // Withdraw function to allow the owner to withdraw funds from the treasury
+    // Allow people to donate without changing ownership tracking
+    receive() external payable {
+        balances[owner] += msg.value;
+        emit Transaction(msg.sender, msg.value, "Donation");
+    }
+
+    // Withdraw funds by owner
     function withdraw(uint256 amount) public onlyOwner {
         require(amount <= balances[owner], "Insufficient balance");
         payable(owner).transfer(amount);
@@ -31,8 +37,28 @@ contract TreasuryManagement {
         emit Transaction(owner, amount, "Withdraw");
     }
 
-    // View function to get the current balance of the treasury
+    // Withdraw to another address
+    function withdrawTo(address payable recipient, uint256 amount) public onlyOwner {
+        require(amount <= balances[owner], "Insufficient balance");
+        recipient.transfer(amount);
+        balances[owner] -= amount;
+        emit Transaction(recipient, amount, "WithdrawToAddress");
+    }
+
+    // Change the owner of the treasury
+    function changeOwner(address newOwner) public onlyOwner {
+        require(newOwner != address(0), "Invalid address");
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }
+
+    // View the treasury balance tracked internally
     function getTreasuryBalance() public view returns (uint256) {
         return balances[owner];
+    }
+
+    // View the actual ETH held by this contract
+    function getContractBalance() public view returns (uint256) {
+        return address(this).balance;
     }
 }
