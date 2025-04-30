@@ -1,8 +1,10 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+/// @title Treasury Management Contract
+/// @notice Manages deposits, withdrawals, and ownership for a treasury
 contract TreasuryManagement {
     address public owner;
-    mapping(address => uint256) public balances;
 
     event Transaction(address indexed sender, uint256 amount, string transactionType);
     event OwnershipTransferred(address indexed oldOwner, address indexed newOwner);
@@ -12,52 +14,59 @@ contract TreasuryManagement {
         _;
     }
 
+    /// @notice Initializes the contract and sets the deployer as the owner
     constructor() {
         owner = msg.sender;
     }
 
-    // Deposit function to add funds to the treasury
-    function deposit() public payable {
-        balances[owner] += msg.value;
+    /// @notice Deposits ETH into the treasury
+    /// @dev Emits a "Deposit" event
+    function deposit() external payable {
+        require(msg.value > 0, "Must send ETH to deposit");
         emit Transaction(msg.sender, msg.value, "Deposit");
     }
 
-    // Allow people to donate without changing ownership tracking
+    /// @notice Accepts plain ETH transfers as donations
+    /// @dev Emits a "Donation" event
     receive() external payable {
-        balances[owner] += msg.value;
         emit Transaction(msg.sender, msg.value, "Donation");
     }
 
-    // Withdraw funds by owner
-    function withdraw(uint256 amount) public onlyOwner {
-        require(amount <= balances[owner], "Insufficient balance");
+    /// @notice Withdraws ETH to the owner's address
+    /// @param amount The amount of ETH to withdraw (in wei)
+    function withdraw(uint256 amount) external onlyOwner {
+        require(amount > 0, "Amount must be greater than 0");
+        require(address(this).balance >= amount, "Insufficient contract balance");
+
         payable(owner).transfer(amount);
-        balances[owner] -= amount;
         emit Transaction(owner, amount, "Withdraw");
     }
 
-    // Withdraw to another address
-    function withdrawTo(address payable recipient, uint256 amount) public onlyOwner {
-        require(amount <= balances[owner], "Insufficient balance");
+    /// @notice Withdraws ETH to a specific recipient address
+    /// @param recipient The address to receive the ETH
+    /// @param amount The amount of ETH to withdraw (in wei)
+    function withdrawTo(address payable recipient, uint256 amount) external onlyOwner {
+        require(recipient != address(0), "Invalid recipient address");
+        require(amount > 0, "Amount must be greater than 0");
+        require(address(this).balance >= amount, "Insufficient contract balance");
+
         recipient.transfer(amount);
-        balances[owner] -= amount;
         emit Transaction(recipient, amount, "WithdrawToAddress");
     }
 
-    // Change the owner of the treasury
-    function changeOwner(address newOwner) public onlyOwner {
-        require(newOwner != address(0), "Invalid address");
+    /// @notice Transfers ownership of the contract to a new owner
+    /// @param newOwner The address of the new owner
+    function changeOwner(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "Invalid new owner address");
+
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
     }
 
-    // View the treasury balance tracked internally
-    function getTreasuryBalance() public view returns (uint256) {
-        return balances[owner];
-    }
-
-    // View the actual ETH held by this contract
-    function getContractBalance() public view returns (uint256) {
+    /// @notice Returns the ETH balance of the contract
+    /// @return The current balance in wei
+    function getContractBalance() external view returns (uint256) {
         return address(this).balance;
     }
 }
+
